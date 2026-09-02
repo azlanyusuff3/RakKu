@@ -1,0 +1,22 @@
+{
+  "id": "./",
+  "name": "RakKu - Rak Buku Keluarga",
+  "short_name": "RakKu",
+  "description": "Rak buku keluarga local-first. Scan, simpan, baca, kongsi dan backup buku secara offline.",
+  "lang": "ms",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f6fc",
+  "theme_color": "#4e46c8",
+  "orientation": "any",
+  "categories": ["education", "books", "kids"],
+  "icons": [
+    {"src":"./icons/icon-192.png","sizes":"192x192","type":"image/png"},
+    {"src":"./icons/icon-512.png","sizes":"512x512","type":"image/png"},
+    {"src":"./icons/icon-maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
+  ],
+  "shortcuts": [
+    {"name":"Rak Buku","short_name":"Rak Buku","url":"./"}
+  ]
+}
