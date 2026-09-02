@@ -1,6 +1,7 @@
 'use strict';
 
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.1.0';
+const PDFJS_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const DB_NAME = 'rakku-db';
 const DB_VERSION = 2;
 const MAGIC = 'RAKKU2\r\n';
@@ -142,13 +143,13 @@ function libraryView(){
     const pr=state.progress.get(b.id)||{}; const pages=b.pageCount||0; const current=clamp(pr.currentPage||0,0,Math.max(0,pages-1)); const pct=pages?Math.round(((current+(pr.completed?1:0))/pages)*100):0;
     return `<article class="book-card"><button class="cover-btn" data-read="${b.id}">${coverHtml(b)}</button><div class="book-meta"><h3>${escapeHtml(b.title)}</h3><p>${escapeHtml(b.author||b.category||'RakKu')} · ${pages} muka surat</p><div class="progress"><span style="width:${clamp(pct,0,100)}%"></span></div><div class="card-actions"><button class="mini" data-read="${b.id}">📖 Baca</button><button class="mini ${pr.favourite?'fav':''}" data-fav="${b.id}">${pr.favourite?'♥':'♡'}</button>${parent?`<button class="mini" data-edit="${b.id}">✏️</button><button class="mini" data-share="${b.id}">📤</button><button class="mini" data-delete="${b.id}">🗑️</button>`:''}</div></div></article>`;
   }).join('');
-  return shell(`<section class="hero"><div><span class="eyebrow">100% LOCAL • OFFLINE-FIRST</span><h1>${state.currentProfile?.role==='parent'?'Rak buku keluarga dalam poket.':'Jom pilih buku dan baca.'}</h1><p>${state.currentProfile?.role==='parent'?'Scan buku, auto-crop, split dua muka surat, kemudian share fail .rakku ke device anak.':'Progress bacaan kamu disimpan dalam profil sendiri.'}</p></div><div class="hero-emoji">${state.currentProfile?.role==='parent'?'📕':'🌟'}</div></section><section class="toolbar"><div><h2>Rak Buku</h2><small>${state.books.length} buku · ${escapeHtml(state.settings.familyName||'RakKu')}</small></div><div class="searchrow"><input id="searchBooks" value="${escapeAttr(state.search)}" placeholder="Cari buku, kategori…" aria-label="Cari buku">${parent?'<button class="ghost" id="importBookBtn">📥 Import</button>':''}</div></section><section class="books">${cards||`<div class="empty"><div class="big">📚</div><h3>${q?'Tiada buku ditemui':'Rak masih kosong'}</h3><p>${parent?'Tekan “＋ Buku” untuk scan buku pertama.':'Minta Parent masukkan buku dahulu.'}</p></div>`}</section><input class="hidden" id="importBookInput" type="file" accept=".rakku,application/octet-stream">`);
+  return shell(`<section class="hero"><div><span class="eyebrow">100% LOCAL • OFFLINE-FIRST</span><h1>${state.currentProfile?.role==='parent'?'Rak buku keluarga dalam poket.':'Jom pilih buku dan baca.'}</h1><p>${state.currentProfile?.role==='parent'?'Scan buku, auto-crop, split dua muka surat, kemudian share fail .rakku ke device anak.':'Progress bacaan kamu disimpan dalam profil sendiri.'}</p></div><div class="hero-emoji">${state.currentProfile?.role==='parent'?'📕':'🌟'}</div></section><section class="toolbar"><div><h2>Rak Buku</h2><small>${state.books.length} buku · ${escapeHtml(state.settings.familyName||'RakKu')}</small></div><div class="searchrow"><input id="searchBooks" value="${escapeAttr(state.search)}" placeholder="Cari buku, kategori…" aria-label="Cari buku">${parent?'<button class="ghost" id="importPdfHomeBtn">📄 PDF</button><button class="ghost" id="importBookBtn">📥 .rakku</button>':''}</div></section><section class="books">${cards||`<div class="empty"><div class="big">📚</div><h3>${q?'Tiada buku ditemui':'Rak masih kosong'}</h3><p>${parent?'Tekan “＋ Buku” untuk scan buku pertama.':'Minta Parent masukkan buku dahulu.'}</p></div>`}</section><input class="hidden" id="importBookInput" type="file" accept=".rakku,application/octet-stream"><input class="hidden" id="importPdfHomeInput" type="file" accept="application/pdf,.pdf">`);
 }
 
 function editorView(){
   const b=state.editingBook||{};
-  const thumbs=state.editPages.map((p,i)=>`<div class="page-thumb"><img src="${p.url}" alt="Muka surat ${i+1}"><span class="page-number">${i+1}</span>${p.autoSplit?'<span class="page-badge">AUTO SPLIT</span>':''}<div class="thumb-actions"><button data-up="${i}" ${i===0?'disabled':''} title="Naik">↑</button><button data-down="${i}" ${i===state.editPages.length-1?'disabled':''} title="Turun">↓</button><button data-split="${i}" title="Split dua page">↔</button><button data-rm="${i}" title="Padam">✕</button></div></div>`).join('');
-  return shell(`<section class="editor"><div class="editor-head"><div><h2>${b.id?'Edit Buku':'Buku Baru'}</h2><p>Camera → auto crop/straighten → HD clean → optional double-page split.</p></div><span class="mini">v${APP_VERSION}</span></div><div class="form-grid"><div class="field"><label>Nama buku</label><input id="bookTitle" value="${escapeAttr(b.title||'')}" placeholder="Contoh: Sang Kancil dan Buaya"></div><div class="field"><label>Penulis (optional)</label><input id="bookAuthor" value="${escapeAttr(b.author||'')}" placeholder="Penulis"></div><div class="field"><label>Kategori</label><select id="bookCategory"><option value="Cerita">Cerita</option><option value="Bahasa Melayu">Bahasa Melayu</option><option value="English">English</option><option value="Matematik">Matematik</option><option value="Sains">Sains</option><option value="Agama">Agama</option><option value="Lain-lain">Lain-lain</option></select></div></div><section class="capture-panel"><div class="capture-top"><div class="cam">📷</div><div><h3>Scanner Buku</h3><p>Ambil satu demi satu dengan kamera, atau pilih banyak gambar dari Gallery.</p></div><div class="capture-actions"><label class="primary file-btn">📷 Kamera<input id="cameraInput" type="file" accept="image/*" capture="environment"></label><label class="ghost file-btn">🖼️ Gallery<input id="galleryInput" type="file" accept="image/*" multiple></label></div></div><div class="scanner-options"><label class="check"><input id="autoCrop" type="checkbox" ${state.settings.autoCrop!==false?'checked':''}> Auto crop + straighten</label><label class="check"><input id="autoSplit" type="checkbox" ${state.settings.autoSplit!==false?'checked':''}> Auto double-page split</label><label class="check">HD <select id="scanQuality"><option value="1600">Compact</option><option value="2000">HD</option><option value="2600">HD+</option></select></label></div><div class="scan-status">Tip: untuk double-page, buka buku rata dan ambil gambar landscape dengan garisan tengah buku jelas.</div></section><div class="thumbbar"><strong>${state.editPages.length} muka surat</strong><small>↑ ↓ susun · ↔ split manual · ✕ buang</small></div><div class="thumbs">${thumbs||'<div class="empty"><div class="big">📷</div><h3>Belum ada page</h3><p>Mulakan scan dari cover atau muka surat pertama.</p></div>'}</div><div class="savebar"><button class="ghost" id="cancelEdit">Batal</button><button class="primary" id="saveBook">Simpan Buku</button></div></section>`);
+  const thumbs=state.editPages.map((p,i)=>`<div class="page-thumb"><img src="${p.url}" alt="Muka surat ${i+1}"><span class="page-number">${i+1}</span>${p.autoSplit?'<span class="page-badge">AUTO SPLIT</span>':p.fromPdf?'<span class="page-badge">PDF</span>':''}<div class="thumb-actions"><button data-up="${i}" ${i===0?'disabled':''} title="Naik">↑</button><button data-down="${i}" ${i===state.editPages.length-1?'disabled':''} title="Turun">↓</button><button data-split="${i}" title="Split dua page">↔</button><button data-rm="${i}" title="Padam">✕</button></div></div>`).join('');
+  return shell(`<section class="editor"><div class="editor-head"><div><h2>${b.id?'Edit Buku':'Buku Baru'}</h2><p>Camera/Gallery → auto crop + HD clean, atau PDF → terus jadi muka surat RakKu.</p></div><span class="mini">v${APP_VERSION}</span></div><div class="form-grid"><div class="field"><label>Nama buku</label><input id="bookTitle" value="${escapeAttr(b.title||'')}" placeholder="Contoh: Sang Kancil dan Buaya"></div><div class="field"><label>Penulis (optional)</label><input id="bookAuthor" value="${escapeAttr(b.author||'')}" placeholder="Penulis"></div><div class="field"><label>Kategori</label><select id="bookCategory"><option value="Cerita">Cerita</option><option value="Bahasa Melayu">Bahasa Melayu</option><option value="English">English</option><option value="Matematik">Matematik</option><option value="Sains">Sains</option><option value="Agama">Agama</option><option value="Lain-lain">Lain-lain</option></select></div></div><section class="capture-panel"><div class="capture-top"><div class="cam">📷</div><div><h3>Scanner Buku</h3><p>Ambil dengan kamera, pilih gambar dari Gallery, atau import terus buku PDF.</p></div><div class="capture-actions"><label class="primary file-btn">📷 Kamera<input id="cameraInput" type="file" accept="image/*" capture="environment"></label><label class="ghost file-btn">🖼️ Gallery<input id="galleryInput" type="file" accept="image/*" multiple></label><label class="ghost file-btn">📄 Import PDF<input id="pdfInput" type="file" accept="application/pdf,.pdf"></label></div></div><div class="scanner-options"><label class="check"><input id="autoCrop" type="checkbox" ${state.settings.autoCrop!==false?'checked':''}> Auto crop + straighten</label><label class="check"><input id="autoSplit" type="checkbox" ${state.settings.autoSplit!==false?'checked':''}> Auto double-page split</label><label class="check">HD <select id="scanQuality"><option value="1600">Compact</option><option value="2000">HD</option><option value="2600">HD+</option></select></label></div><div class="scan-status">Tip: untuk double-page, buka buku rata dan ambil gambar landscape dengan garisan tengah buku jelas.</div></section><div class="thumbbar"><strong>${state.editPages.length} muka surat</strong><small>↑ ↓ susun · ↔ split manual · ✕ buang</small></div><div class="thumbs">${thumbs||'<div class="empty"><div class="big">📷</div><h3>Belum ada page</h3><p>Mulakan scan dari cover atau muka surat pertama.</p></div>'}</div><div class="savebar"><button class="ghost" id="cancelEdit">Batal</button><button class="primary" id="saveBook">Simpan Buku</button></div></section>`);
 }
 
 function readerView(){
@@ -166,7 +167,7 @@ async function storageInfo(){
 }
 function settingsView(){
   const rows=state.profiles.map(p=>`<div class="profile-row"><div class="left"><span class="av">${escapeHtml(p.avatar)}</span><div><strong>${escapeHtml(p.name)}</strong><small>${p.role==='parent'?'Parent':'Child'}</small></div></div>${p.role==='child'?`<button class="mini" data-rmprofile="${p.id}">Padam</button>`:''}</div>`).join('');
-  return shell(`<section class="settings-grid"><div class="panel"><h3>👨‍👩‍👧‍👦 Family Profiles</h3><p>Parent boleh urus buku. Kids Mode hanya membaca dan simpan progress sendiri.</p><div class="profile-manage">${rows}</div><div class="stack" style="margin-top:12px"><button class="primary" id="addChild">＋ Profil Anak</button><button class="ghost" id="changePin">🔐 Tukar PIN</button></div></div><div class="panel"><h3>📷 Scanner Default</h3><p>Setting ini digunakan setiap kali buat buku baru.</p><label class="check"><input id="setAutoCrop" type="checkbox" ${state.settings.autoCrop!==false?'checked':''}> Auto crop + straighten</label><label class="check" style="margin-top:7px"><input id="setAutoSplit" type="checkbox" ${state.settings.autoSplit!==false?'checked':''}> Auto double-page split</label><div class="field" style="margin-top:9px"><label>HD output</label><select id="setQuality"><option value="1600">Compact 1600px</option><option value="2000">HD 2000px</option><option value="2600">HD+ 2600px</option></select></div></div><div class="panel"><h3>📦 Pindah & Backup</h3><p>.rakku ialah format portable RakKu; boleh dipindah melalui Files/Drive/WhatsApp Document/AirDrop/Quick Share.</p><div class="stack"><button class="primary" id="backupLibrary">💾 Backup Library</button><label class="ghost file-btn">♻️ Restore<input id="restoreInput" type="file" accept=".rakku,application/octet-stream"></label>${deferredInstallPrompt?'<button class="ghost" id="installPwa">📲 Install App</button>':''}</div><div class="notice" style="margin-top:12px">Backup Library termasuk buku, profiles, progress dan Parent PIN supaya device baru boleh restore keadaan yang sama.</div></div><div class="panel"><h3>💾 Device Storage</h3><p id="storageLabel">Mengira storage…</p><div class="storage-meter"><span id="storageBar" style="width:0%"></span></div><button class="ghost" id="refreshStorage">Refresh</button></div><div class="panel danger-zone"><h3>🧹 Data</h3><p>RakKu tidak menggunakan cloud. Clear site/browser data akan memadam library local jika tiada backup.</p><button class="danger" id="wipeAll">Padam Semua Data RakKu</button></div><div class="panel"><h3>ℹ️ RakKu v${APP_VERSION}</h3><p>Local-first PWA. Scanner menggunakan document-edge heuristic supaya boleh berfungsi offline tanpa API atau server.</p><div class="notice">Auto-crop sangat bergantung pada lighting/background. Jika scan susah dikesan, RakKu akan kekalkan gambar dan kau boleh crop semula melalui scan yang lebih jelas.</div></div></section>`);
+  return shell(`<section class="settings-grid"><div class="panel"><h3>👨‍👩‍👧‍👦 Family Profiles</h3><p>Parent boleh urus buku. Kids Mode hanya membaca dan simpan progress sendiri.</p><div class="profile-manage">${rows}</div><div class="stack" style="margin-top:12px"><button class="primary" id="addChild">＋ Profil Anak</button><button class="ghost" id="changePin">🔐 Tukar PIN</button></div></div><div class="panel"><h3>📷 Scanner Default</h3><p>Setting ini digunakan setiap kali buat buku baru.</p><label class="check"><input id="setAutoCrop" type="checkbox" ${state.settings.autoCrop!==false?'checked':''}> Auto crop + straighten</label><label class="check" style="margin-top:7px"><input id="setAutoSplit" type="checkbox" ${state.settings.autoSplit!==false?'checked':''}> Auto double-page split</label><div class="field" style="margin-top:9px"><label>HD output</label><select id="setQuality"><option value="1600">Compact 1600px</option><option value="2000">HD 2000px</option><option value="2600">HD+ 2600px</option></select></div></div><div class="panel"><h3>📦 Pindah & Backup</h3><p>.rakku ialah format portable RakKu; boleh dipindah melalui Files/Drive/WhatsApp Document/AirDrop/Quick Share.</p><div class="stack"><button class="primary" id="backupLibrary">💾 Backup Library</button><label class="ghost file-btn">♻️ Restore<input id="restoreInput" type="file" accept=".rakku,application/octet-stream"></label>${deferredInstallPrompt?'<button class="ghost" id="installPwa">📲 Install App</button>':''}</div><div class="notice" style="margin-top:12px">Backup Library termasuk buku, profiles, progress dan Parent PIN supaya device baru boleh restore keadaan yang sama.</div></div><div class="panel"><h3>💾 Device Storage</h3><p id="storageLabel">Mengira storage…</p><div class="storage-meter"><span id="storageBar" style="width:0%"></span></div><button class="ghost" id="refreshStorage">Refresh</button></div><div class="panel danger-zone"><h3>🧹 Data</h3><p>RakKu tidak menggunakan cloud. Clear site/browser data akan memadam library local jika tiada backup.</p><button class="danger" id="wipeAll">Padam Semua Data RakKu</button></div><div class="panel"><h3>ℹ️ RakKu v${APP_VERSION}</h3><p>Local-first PWA. Scanner dan PDF import diproses dalam device tanpa upload buku ke server.</p><div class="notice">Kalau lighting kamera susah, guna Import PDF atau Gallery. PDF.js dipin ke versi tetap dan dicache oleh PWA selepas app v2.1 dibuka online sekali.</div></div></section>`);
 }
 
 function render(){
@@ -196,7 +197,8 @@ function wire(){
   $$('[data-delete]').forEach(el=>el.addEventListener('click',()=>confirmDeleteBook(el.dataset.delete)));
   $$('[data-fav]').forEach(el=>el.addEventListener('click',async()=>{const id=el.dataset.fav;const p=state.progress.get(id)||{};await saveProgress(id,{favourite:!p.favourite});render();}));
   $('#importBookBtn')?.addEventListener('click',()=>$('#importBookInput').click()); $('#importBookInput')?.addEventListener('change',e=>importRakkuFile(e.target.files?.[0]));
-  $('#cameraInput')?.addEventListener('change',handleScanFiles); $('#galleryInput')?.addEventListener('change',handleScanFiles);
+  $('#importPdfHomeBtn')?.addEventListener('click',()=>$('#importPdfHomeInput').click()); $('#importPdfHomeInput')?.addEventListener('change',e=>importPdfAsBook(e.target.files?.[0],true));
+  $('#cameraInput')?.addEventListener('change',handleScanFiles); $('#galleryInput')?.addEventListener('change',handleScanFiles); $('#pdfInput')?.addEventListener('change',e=>importPdfAsBook(e.target.files?.[0],false));
   $('#cancelEdit')?.addEventListener('click',()=>{cleanupEditorUrls();state.view='library';render();}); $('#saveBook')?.addEventListener('click',saveEditor);
   $$('[data-rm]').forEach(el=>el.addEventListener('click',()=>removeEditPage(+el.dataset.rm))); $$('[data-up]').forEach(el=>el.addEventListener('click',()=>movePage(+el.dataset.up,-1))); $$('[data-down]').forEach(el=>el.addEventListener('click',()=>movePage(+el.dataset.down,1))); $$('[data-split]').forEach(el=>el.addEventListener('click',()=>manualSplit(+el.dataset.split)));
   $('#bookTitle')?.addEventListener('input',e=>{ if(state.editingBook) state.editingBook.title=e.target.value; });
@@ -257,6 +259,78 @@ async function handleScanFiles(e){
     await sleep(20);
   }
   state.busy=''; render(); e.target.value='';
+}
+
+
+function pdfTitleFromFilename(name='Buku PDF'){
+  return String(name).replace(/\.pdf$/i,'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim() || 'Buku PDF';
+}
+function updateBusyText(msg){
+  state.busy=msg;
+  const el=$('.busy-card strong');
+  if(el) el.textContent=msg;
+}
+async function importPdfAsBook(file,fromLibrary=false){
+  if(!file)return;
+  if(file.type && file.type!=='application/pdf' && !/\.pdf$/i.test(file.name||'')){showToast('Pilih fail PDF');return;}
+  if(typeof window.pdfjsLib==='undefined'){
+    alert('PDF engine belum tersedia. Pastikan RakKu dibuka sekurang-kurangnya sekali dengan internet selepas update v2.1, kemudian ia boleh digunakan offline.');
+    return;
+  }
+  const previousView=state.view;
+  try{
+    if(fromLibrary){
+      cleanupEditorUrls();
+      state.editPages=[];
+      state.editingBook={id:null,title:pdfTitleFromFilename(file.name),author:'',category:'Cerita'};
+      state.view='editor';
+      render();
+    }else if(state.editingBook && !String(state.editingBook.title||'').trim()){
+      state.editingBook.title=pdfTitleFromFilename(file.name);
+      const t=$('#bookTitle'); if(t)t.value=state.editingBook.title;
+    }
+    setBusy('Membuka PDF…');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS_WORKER_URL;
+    const data=new Uint8Array(await file.arrayBuffer());
+    const loadingTask=window.pdfjsLib.getDocument({data});
+    const pdf=await loadingTask.promise;
+    const total=pdf.numPages||0;
+    if(!total) throw new Error('PDF tidak mempunyai muka surat');
+    if(total>300 && !confirm(`PDF ini mempunyai ${total} muka surat dan mungkin menggunakan storage yang banyak. Teruskan import?`)){
+      state.busy=''; render(); return;
+    }
+    const quality=Number(state.settings.scanQuality||2000);
+    for(let pageNo=1;pageNo<=total;pageNo++){
+      updateBusyText(`Import PDF ${pageNo}/${total}…`);
+      const page=await pdf.getPage(pageNo);
+      const base=page.getViewport({scale:1});
+      const long=Math.max(base.width,base.height)||1;
+      const scale=clamp(quality/long,0.5,4);
+      const viewport=page.getViewport({scale});
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,Math.round(viewport.width));
+      canvas.height=Math.max(1,Math.round(viewport.height));
+      const ctx=canvas.getContext('2d',{alpha:false});
+      ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      await page.render({canvasContext:ctx,viewport,background:'rgb(255,255,255)'}).promise;
+      const out=await canvasToJpeg(canvas,quality);
+      state.editPages.push({id:uid(),blob:out.blob,width:out.width,height:out.height,url:URL.createObjectURL(out.blob),existing:false,fromPdf:true});
+      page.cleanup?.();
+      canvas.width=1; canvas.height=1;
+      if(pageNo%3===0) await sleep(0);
+    }
+    await pdf.destroy?.();
+    state.busy=''; render();
+    showToast(`${total} muka surat PDF siap diimport`);
+  }catch(err){
+    console.error(err);
+    state.busy=''; render();
+    alert(`Import PDF gagal: ${err.message||err}`);
+    if(fromLibrary && !state.editPages.length){state.view=previousView==='library'?'library':'editor';render();}
+  }finally{
+    const a=$('#pdfInput');if(a)a.value='';
+    const b=$('#importPdfHomeInput');if(b)b.value='';
+  }
 }
 
 async function bitmapFromBlob(blob){ try{return await createImageBitmap(blob,{imageOrientation:'from-image'});}catch{return createImageBitmap(blob);} }

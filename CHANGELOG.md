@@ -1,3 +1,14 @@
+# RakKu Changelog
+
+## v2.1.0 — PDF Book Import
+- Tambah **Import PDF** dari Rak Buku dan Buku Baru.
+- Setiap page PDF dirender menjadi page RakKu, page pertama jadi cover selepas save.
+- Nama buku auto diambil daripada nama fail PDF dan masih boleh diedit.
+- Import diproses satu page pada satu masa dengan progress untuk kurangkan penggunaan memory.
+- PDF pages ikut setting Compact / HD / HD+.
+- PDF.js 3.11.174 dipin dan PWA cuba cache engine untuk kegunaan offline selepas update dibuka online sekali.
+- Tiada PDF atau page dihantar ke server oleh RakKu.
+
 # Changelog
 
 ## v2.0.0 — Local Family Edition

@@ -1,11 +1,21 @@
-const CACHE = 'rakku-v2.0.0-shell';
+const CACHE = 'rakku-v2.1.0-shell';
 const CORE = [
   './', './index.html', './manifest.webmanifest', './src/style.css', './src/main.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'
 ];
+const PDF_ENGINE = [
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+];
 self.addEventListener('install', event => {
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)));
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await cache.addAll(CORE);
+    // PDF engine is optional for the shell: cache it when network is available,
+    // but never let a CDN hiccup break RakKu offline installation.
+    await Promise.allSettled(PDF_ENGINE.map(url => cache.add(url)));
+  })());
 });
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {

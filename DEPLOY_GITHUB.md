@@ -77,3 +77,6 @@ Untuk pindah semua sekali, gunakan `Settings → Backup Library`, kemudian `Rest
 ## Update version kemudian
 
 Upload fail version baru ke repository yang sama dan commit. Service Worker RakKu menggunakan cache versioned; bila app dibuka online selepas deployment baru, static app shell akan dikemas kini. Data IndexedDB/books local tidak dipadam oleh update code biasa.
+
+## RakKu v2.1 — nota PDF offline
+Selepas upload v2.1, buka RakKu sekali dengan internet sehingga app selesai load. RakKu akan cuba cache PDF.js yang dipin ke versi 3.11.174. Selepas itu, import PDF boleh digunakan offline selagi site/app cache tidak dibersihkan.
